@@ -1,15 +1,16 @@
-from flask import Flask, Response
+from flask import Flask
 
 from config import get_config
 from db import db
 
-app = Flask(__name__)
-app.config.from_object(get_config())
-db.init_app(app)
 
-@app.route('/health')
-def health_check():
-    return Response(status=200)
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(get_config())
+    db.init_app(app)
+    db.create_all()
+    return app
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    create_app().run(debug=True)

@@ -12,16 +12,23 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 class TestConfig:
-    pass
+    SECRET_KEY = 'superkey_test'
+    PG_USER = 'cursor'
+    PG_PASSWORD = 'very_secret_password'
+    PG_HOST = 'localhost'
+    PG_PORT = 5432
+    DB_NAME = 'book_exchange_test_db'
+    SQLALCHEMY_DATABASE_URI = f'postgres://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{DB_NAME}'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
 class DevConfig:
     pass
 
 
-def get_config():
-    if os.environ.get('ENV') == 'TEST':
+def get_config(env=None):
+    if env == 'TEST':
         return TestConfig
-    elif os.environ.get('ENV') == 'DEV':
+    elif env == 'DEV':
         return DevConfig
     return Config
