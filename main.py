@@ -1,8 +1,8 @@
-from flask import Flask, render_template
+from flask import Flask
 
 from config import get_config
-from db import db, migrate
-from routes import routes_bp
+from source.db import db, migrate
+from source import routes_bp
 
 
 def create_app(env='DEV'):
@@ -10,11 +10,12 @@ def create_app(env='DEV'):
     app.config.from_object(get_config(env))
     app.register_blueprint(routes_bp)
     with app.app_context():
+        migrate.init_app(app, db)
         db.init_app(app)
         db.create_all()
-        migrate.init_app(app, db)
+
     return app
 
 
 if __name__ == '__main__':
-    create_app().run(debug=True)
+    create_app().run(debug=True, host='0.0.0.0', port='8000')

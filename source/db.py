@@ -4,13 +4,22 @@ from flask_migrate import Migrate
 db = SQLAlchemy()
 migrate = Migrate()
 
+wishlist_table = db.Table(
+    'wishlist',
+    db.Column('user_id', db.Integer, db.ForeignKey('site_user.id'), primary_key=True),
+    db.Column('book_id', db.String(100), db.ForeignKey('book.isbn'), primary_key=True)
+)
+
 
 class SiteUser(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String, unique=True, nullable=False)
-    user_class = db.Column(db.String, nullable=False)
+    group = db.Column(db.String, nullable=False)
     address_id = db.Column(db.Integer, db.ForeignKey('address.id'))
-    library = db.relationship('Library', backref='user')
+    # avatar_name = db.Column(db.String(100))
+    library = db.relationship('Library', backref='user', uselist=False)
+    wishlist = db.relationship('Book', secondary=wishlist_table)
+    # rating = db.Column(db.Float, default=0.00)
 
 
 class Address(db.Model):
@@ -23,24 +32,28 @@ class Address(db.Model):
     users = db.relationship('SiteUser', backref='address')
 
 
-lib_books = db.Table(
+lib_books_table = db.Table(
     'lib_books',
     db.Column('lib_id', db.Integer, db.ForeignKey('library.id'), primary_key=True),
-    db.Column('book_id', db.String(100), db.ForeignKey('book.isbn'), primary_key=True)
+    db.Column('book_id', db.String(100), db.ForeignKey('book.isbn'), primary_key=True),
+    db.Column('hidden', db.Boolean),
+    db.Column('status', db.String)  # available for exchange or not
 )
 
 
 class Library(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('site_user.id'))
-    books = db.relationship('Book', secondary=lib_books, backref='libraries')
+    books = db.relationship('Book', secondary=lib_books_table, backref='libraries')
+    hidden_lib = db.Column(db.Boolean, default=False)
 
 
 class Book(db.Model):
     isbn = db.Column(db.String(100), primary_key=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
     author = db.Column(db.String(100), nullable=False)
-    img_name = db.Column(db.String(100))
+    # img_name = db.Column(db.String(100))
     genre = db.Column(db.String(100))
     year = db.Column(db.Integer)
     publisher = db.Column(db.String(100))
+    # rating = db.Column(db.Float, default=0.00)
