@@ -1,3 +1,4 @@
+import json
 import unittest
 from unittest import TestCase
 
@@ -35,6 +36,27 @@ class TestBooksExchange(TestCase):
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
+    def test_user_post(self):
+        data = json.dumps({'username': 'petro', 'group': 'admin'})
+        resp = app.test_client().post('/users', data=data, content_type='application/json')
+        expected = [
+                    {"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []},
+                    {"id": 2, "username": "petro", "group": "admin", "address": {}, "library": [], "wishlist": []}
+                    ]
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_user_post_not_enough(self):
+        data = json.dumps({'username': 'joker'})
+        resp = app.test_client().post('/users', data=data, content_type='application/json')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Not enough arguments', resp.json['ErrorMessage'])
+
+    def test_user_post_existing_name(self):
+        data = json.dumps({'username': 'petro', 'group': 'admin'})
+        resp = app.test_client().post('/users', data=data, content_type='application/json')
+        self.assertEqual(409, resp.status_code)
+        self.assertEqual('This username already exists', resp.json['ErrorMessage'])
 
 if __name__ == '__main__':
     unittest.main()
