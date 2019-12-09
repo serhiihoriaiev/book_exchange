@@ -7,7 +7,7 @@ migrate = Migrate()
 wishlist_table = db.Table(
     'wishlist',
     db.Column('user_id', db.Integer, db.ForeignKey('site_user.id'), primary_key=True),
-    db.Column('book_id', db.String(100), db.ForeignKey('book.isbn'), primary_key=True)
+    db.Column('book_id', db.Integer, db.ForeignKey('book.id'), primary_key=True)
 )
 
 
@@ -35,7 +35,7 @@ class Address(db.Model):
 lib_books_table = db.Table(
     'lib_books',
     db.Column('lib_id', db.Integer, db.ForeignKey('library.id'), primary_key=True),
-    db.Column('book_id', db.String(100), db.ForeignKey('book.isbn'), primary_key=True),
+    db.Column('book_id', db.Integer, db.ForeignKey('book.id'), primary_key=True),
     db.Column('hidden', db.Boolean),
     db.Column('status', db.String)  # available for exchange or not
 )
@@ -49,11 +49,13 @@ class Library(db.Model):
 
 
 class Book(db.Model):
-    isbn = db.Column(db.String(100), primary_key=True, nullable=False)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(100), nullable=False)
     author = db.Column(db.String(100), nullable=False)
+    translator = db.Column(db.String(100))
     # img_name = db.Column(db.String(100))
     genre = db.Column(db.String(100))
     year = db.Column(db.Integer)
     publisher = db.Column(db.String(100))
+    isbn = db.Column(db.String(20))
     # rating = db.Column(db.Float, default=0.00)

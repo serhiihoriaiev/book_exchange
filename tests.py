@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest import TestCase
 
-from source.db import db, SiteUser
+from source.db import db, SiteUser, Book
 from main import create_app
 
 app = create_app('TEST')
@@ -50,9 +50,9 @@ class TestUser(TestCase):
         data = json.dumps({'username': 'petro', 'group': 'admin'})
         resp = app.test_client().post('/users', data=data, content_type='application/json')
         expected = [
-                    {"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []},
-                    {"id": 2, "username": "petro", "group": "admin", "address": {}, "library": [], "wishlist": []}
-                    ]
+            {"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []},
+            {"id": 2, "username": "petro", "group": "admin", "address": {}, "library": [], "wishlist": []}
+        ]
         self.assertEqual(201, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -72,9 +72,9 @@ class TestUser(TestCase):
         data = json.dumps({'username': 'killer99', 'group': 'user'})
         resp = app.test_client().patch('/users/2', data=data, content_type='application/json')
         expected = [
-                    {"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []},
-                    {"id": 2, "username": "killer99", "group": "user", "address": {}, "library": [], "wishlist": []}
-                    ]
+            {"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []},
+            {"id": 2, "username": "killer99", "group": "user", "address": {}, "library": [], "wishlist": []}
+        ]
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -99,6 +99,83 @@ class TestUser(TestCase):
         resp = app.test_client().delete('/users/3')
         self.assertEqual(404, resp.status_code)
         self.assertEqual('No such user', resp.json['ErrorMessage'])
-        
+
+
+class TestBook(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app_context = app.app_context()
+        cls.app_context.push()
+        db.create_all()
+
+    @classmethod
+    def tearDownClass(cls):
+        db.session.remove()
+        db.drop_all()
+        cls.app_context.pop()
+
+    def test_11_get_empty(self):
+        resp = app.test_client().get('/books')
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual([], resp.json)
+
+    def test_12_get_books(self):
+        example_book = Book(isbn='978-1593279288',
+                                name='Python Crash Course, 2nd Edition: A Hands-On'
+                                     ', Project-Based Introduction to Programming',
+                                author='Eric Matthes')
+        db.session.add(example_book)
+        db.session.commit()
+
+        resp = app.test_client().get('/books')
+        expected = [{"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                      "Project-Based Introduction to Programming",
+                     "author": "Eric Matthes", "translator": None, "genre": None, "year": None, "publisher": None,
+                     "isbn": "978-1593279288"}]
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+        resp = app.test_client().get('/books/1')
+        expected = {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                     "Project-Based Introduction to Programming",
+                    "author": "Eric Matthes", "translator": None, "genre": None, "year": None, "publisher": None,
+                    "isbn": "978-1593279288"}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_13_get_wrong_book(self):
+        resp = app.test_client().get('/books/3')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such book', resp.json['ErrorMessage'])
+
+    def test_14_post_book(self):
+        data = json.dumps({'name': 'The outsider', 'author': 'Stephen King'})
+        resp = app.test_client().post('/books', data=data, content_type='application/json')
+        expected = [
+                    {
+                        "id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                         "Project-Based Introduction to Programming",
+                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None, "publisher": None,
+                        "isbn": "978-1593279288"},
+                    {
+                        "id": 2, "name": "The outsider", "author": "Stephen King", "translator": None, "genre": None,
+                        "year": None, "publisher": None, "isbn": None
+                    }
+                    ]
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_15_post_books_not_enough(self):
+        data = json.dumps({'name': 'Game of Thrones'})
+        resp = app.test_client().post('/books', data=data, content_type='application/json')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Not enough arguments', resp.json['ErrorMessage'])
+
+    def test_16_post_excessive_info(self):
+        data = json.dumps({'name': 'Game of Thrones', 'author': 'George R. R. Martin', 'color': 'black'})
+        resp = app.test_client().post('/books', data=data, content_type='application/json')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Excessive arguments posted', resp.json['ErrorMessage'])
+
 if __name__ == '__main__':
     unittest.main()

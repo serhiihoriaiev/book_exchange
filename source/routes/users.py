@@ -20,7 +20,10 @@ class UserRes(Resource):
         if data.get('username') and data.get('group'):
             if db.session.query(SiteUser).filter(SiteUser.username == data.get('username')).first():
                 return {'ErrorMessage': 'This username already exists'}, 409
-            new = SiteUser(**data)
+            try:
+                new = SiteUser(**data)
+            except TypeError:
+                return {'ErrorMessage': 'Excessive arguments posted'}, 400
             db.session.add(new)
             db.session.commit()
             return marshal(db.session.query(SiteUser).all(), user_struct), 201

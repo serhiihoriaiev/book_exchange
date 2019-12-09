@@ -6,8 +6,8 @@ address_struct = {
 }
 
 book_struct = {
-    "isbn": fields.String, "name": fields.String, "author": fields.String,
-    "genre": fields.String, "year": fields.Integer, "publisher": fields.String
+    "id": fields.Integer, "name": fields.String, "author": fields.String, "translator": fields.String,
+    "genre": fields.String, "year": fields.Integer(default=None), "publisher": fields.String, "isbn": fields.String
 
 }
 
