@@ -35,8 +35,9 @@ class UserRes(Resource):
             if db.session.query(SiteUser).get(user_id):
                 db.session.query(SiteUser).filter(SiteUser.id == user_id).update(data)
                 db.session.commit()
-                return marshal(db.session.query(SiteUser).all(), user_struct), 200
+                return marshal(db.session.query(SiteUser).get(user_id), user_struct), 200
             return {'ErrorMessage': 'No such user'}, 404
+        return {'ErrorMessage': 'User not specified'}, 400
 
     def delete(self, user_id=None):
         if user_id:

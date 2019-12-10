@@ -25,3 +25,22 @@ class BookRes(Resource):
             db.session.commit()
             return marshal(db.session.query(Book).all(), book_struct), 201
         return {'ErrorMessage': 'Not enough arguments'}, 400
+
+    def patch(self, book_id=None):
+        if book_id:
+            data = json.loads(request.data)
+            if db.session.query(Book).get(book_id):
+                db.session.query(Book).filter(Book.id == book_id).update(data)
+                db.session.commit()
+                return marshal(db.session.query(Book).get(book_id), book_struct), 200
+        return {'ErrorMessage': 'Book not specified'}, 400
+
+    def delete(self, book_id=None):
+        if book_id:
+            book = db.session.query(Book).get(book_id)
+            if book:
+                db.session.delete(book)
+                db.session.commit()
+                return marshal(db.session.query(Book).all(), book_struct), 200
+            return {'ErrorMessage': 'No such book'}, 404
+        return {'ErrorMessage': 'Book not specified'}, 400

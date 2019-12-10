@@ -71,10 +71,7 @@ class TestUser(TestCase):
     def test_07_user_patch(self):
         data = json.dumps({'username': 'killer99', 'group': 'user'})
         resp = app.test_client().patch('/users/2', data=data, content_type='application/json')
-        expected = [
-            {"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []},
-            {"id": 2, "username": "killer99", "group": "user", "address": {}, "library": [], "wishlist": []}
-        ]
+        expected = {"id": 2, "username": "killer99", "group": "user", "address": {}, "library": [], "wishlist": []}
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -176,6 +173,48 @@ class TestBook(TestCase):
         resp = app.test_client().post('/books', data=data, content_type='application/json')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Excessive arguments posted', resp.json['ErrorMessage'])
+
+    def test_17_patch_book(self):
+        data = json.dumps({'genre': 'programming', 'year': 2019})
+        resp = app.test_client().patch('/books/1', data=data, content_type='application/json')
+        expected = {
+                    "id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                     "Project-Based Introduction to Programming",
+                    "author": "Eric Matthes", "translator": None, "genre": "programming", "year": 2019,
+                    "publisher": None, "isbn": "978-1593279288"
+                   }
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+        # check if it will work the second time (it must!)
+        resp = app.test_client().patch('/books/1', data=data, content_type='application/json')
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_18_patch_book_not_specified(self):
+        data = json.dumps({'genre': 'programming', 'year': 2019})
+        resp = app.test_client().patch('/books', data=data, content_type='application/json')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Book not specified', resp.json['ErrorMessage'])
+
+    def test_19_delete_book(self):
+        resp = app.test_client().delete('/books/1')
+        expected = [{
+                        "id": 2, "name": "The outsider", "author": "Stephen King", "translator": None, "genre": None,
+                        "year": None, "publisher": None, "isbn": None
+                    }]
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_20_delete_wrong_book(self):
+        resp = app.test_client().delete('/books/5')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such book', resp.json['ErrorMessage'])
+
+    def test_21_delete_wrong_query(self):
+        resp = app.test_client().delete('/books')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Book not specified', resp.json['ErrorMessage'])
 
 if __name__ == '__main__':
     unittest.main()
