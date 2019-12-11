@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest import TestCase
 
-from source.db import db, SiteUser, Book
+from source.db import db, SiteUser, Book, Address
 from main import create_app
 
 app = create_app('TEST')
@@ -97,6 +97,86 @@ class TestUser(TestCase):
         self.assertEqual(404, resp.status_code)
         self.assertEqual('No such user', resp.json['ErrorMessage'])
 
+    def test_11_get_empty_addresses(self):
+        resp = app.test_client().get('/addr')
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual([], resp.json)
+
+    def test_12_get_all_addresses(self):
+        data = Address(street_addr='Krylova str, 96', city='Los Angeles', region='CA', zip='12345-6789',
+                       country='USA')
+        db.session.add(data)
+        db.session.commit()
+
+        resp = app.test_client().get('/addr')
+        expected = [{'id': 1, 'street_addr': 'Krylova str, 96', 'city': 'Los Angeles',
+                     'region': 'CA', 'zip': '12345-6789', 'country': 'USA'}]
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_13_get_address_by_id(self):
+        resp = app.test_client().get('/addr/1')
+        expected = {'id': 1, 'street_addr': 'Krylova str, 96', 'city': 'Los Angeles',
+                     'region': 'CA', 'zip': '12345-6789', 'country': 'USA'}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_14_post_new_address(self):
+        data = json.dumps({'street_addr': 'Bandera pr., 22, app.4', 'city': 'Kyiv',
+                     'region': 'Kyivska oblast', 'zip': '40321', 'country': 'Ukraine'})
+        resp = app.test_client().post('/addr', data=data, content_type='application/json')
+        expected = [
+                    {'id': 1, 'street_addr': 'Krylova str, 96', 'city': 'Los Angeles',
+                     'region': 'CA', 'zip': '12345-6789', 'country': 'USA'},
+                    {'id': 2, 'street_addr': 'Bandera pr., 22, app.4', 'city': 'Kyiv',
+                     'region': 'Kyivska oblast', 'zip': '40321', 'country': 'Ukraine'}
+                    ]
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_15_post_not_enough_data(self):
+        data = json.dumps({'street_addr': 'Stalevarov str, 20'})
+        resp = app.test_client().post('/addr', data=data, content_type='application/json')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Not enough arguments', resp.json['ErrorMessage'])
+
+    def test_16_patch_addr_info(self):
+        data = json.dumps({'street_addr': 'Stalevarov str, 20'})
+        resp = app.test_client().patch('/addr/1', data=data, content_type='application/json')
+        expected = {'id': 1, 'street_addr': 'Stalevarov str, 20', 'city': 'Los Angeles',
+                    'region': 'CA', 'zip': '12345-6789', 'country': 'USA'}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_17_patch_addr_id(self):
+        data = json.dumps({'id': 4, 'street_addr': 'Stalevarov str, 20'})
+        resp = app.test_client().patch('/addr/1', data=data, content_type='application/json')
+        self.assertEqual(403, resp.status_code)
+        self.assertEqual('You can''t change ID', resp.json['ErrorMessage'])
+
+    def test_18_patch_address_not_exist(self):
+        data = json.dumps({'street_addr': 'Stalevarov str, 20'})
+        resp = app.test_client().patch('/addr/5', data=data, content_type='application/json')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such address', resp.json['ErrorMessage'])
+
+    def test_19_delete_address(self):
+        resp = app.test_client().delete('/addr/2')
+        expected = [{'id': 1, 'street_addr': 'Stalevarov str, 20', 'city': 'Los Angeles',
+                    'region': 'CA', 'zip': '12345-6789', 'country': 'USA'}]
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_20_delete_not_existent_addr(self):
+        resp = app.test_client().delete('/addr/6')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such address', resp.json['ErrorMessage'])
+
+    def test_21_delete_addr_not_specified(self):
+        resp = app.test_client().delete('/addr')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Address not specified', resp.json['ErrorMessage'])
+
 
 class TestBook(TestCase):
     @classmethod
@@ -111,12 +191,12 @@ class TestBook(TestCase):
         db.drop_all()
         cls.app_context.pop()
 
-    def test_11_get_empty(self):
+    def test_01_get_empty(self):
         resp = app.test_client().get('/books')
         self.assertEqual(200, resp.status_code)
         self.assertEqual([], resp.json)
 
-    def test_12_get_books(self):
+    def test_02_get_books(self):
         example_book = Book(isbn='978-1593279288',
                                 name='Python Crash Course, 2nd Edition: A Hands-On'
                                      ', Project-Based Introduction to Programming',
@@ -140,12 +220,12 @@ class TestBook(TestCase):
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
-    def test_13_get_wrong_book(self):
+    def test_03_get_wrong_book(self):
         resp = app.test_client().get('/books/3')
         self.assertEqual(404, resp.status_code)
         self.assertEqual('No such book', resp.json['ErrorMessage'])
 
-    def test_14_post_book(self):
+    def test_04_post_book(self):
         data = json.dumps({'name': 'The outsider', 'author': 'Stephen King'})
         resp = app.test_client().post('/books', data=data, content_type='application/json')
         expected = [
@@ -162,19 +242,19 @@ class TestBook(TestCase):
         self.assertEqual(201, resp.status_code)
         self.assertEqual(expected, resp.json)
 
-    def test_15_post_books_not_enough(self):
+    def test_05_post_books_not_enough(self):
         data = json.dumps({'name': 'Game of Thrones'})
         resp = app.test_client().post('/books', data=data, content_type='application/json')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Not enough arguments', resp.json['ErrorMessage'])
 
-    def test_16_post_excessive_info(self):
+    def test_06_post_excessive_info(self):
         data = json.dumps({'name': 'Game of Thrones', 'author': 'George R. R. Martin', 'color': 'black'})
         resp = app.test_client().post('/books', data=data, content_type='application/json')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Excessive arguments posted', resp.json['ErrorMessage'])
 
-    def test_17_patch_book(self):
+    def test_07_patch_book(self):
         data = json.dumps({'genre': 'programming', 'year': 2019})
         resp = app.test_client().patch('/books/1', data=data, content_type='application/json')
         expected = {
@@ -191,13 +271,13 @@ class TestBook(TestCase):
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
-    def test_18_patch_book_not_specified(self):
+    def test_08_patch_book_not_specified(self):
         data = json.dumps({'genre': 'programming', 'year': 2019})
         resp = app.test_client().patch('/books', data=data, content_type='application/json')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Book not specified', resp.json['ErrorMessage'])
 
-    def test_19_delete_book(self):
+    def test_09_delete_book(self):
         resp = app.test_client().delete('/books/1')
         expected = [{
                         "id": 2, "name": "The outsider", "author": "Stephen King", "translator": None, "genre": None,
@@ -206,12 +286,12 @@ class TestBook(TestCase):
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
-    def test_20_delete_wrong_book(self):
+    def test_10_delete_wrong_book(self):
         resp = app.test_client().delete('/books/5')
         self.assertEqual(404, resp.status_code)
         self.assertEqual('No such book', resp.json['ErrorMessage'])
 
-    def test_21_delete_wrong_query(self):
+    def test_11_delete_wrong_query(self):
         resp = app.test_client().delete('/books')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Book not specified', resp.json['ErrorMessage'])

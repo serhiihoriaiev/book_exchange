@@ -29,6 +29,8 @@ class BookRes(Resource):
     def patch(self, book_id=None):
         if book_id:
             data = json.loads(request.data)
+            if data.get('id'):
+                return {'ErrorMessage': 'You can''t change ID'}, 403
             if db.session.query(Book).get(book_id):
                 db.session.query(Book).filter(Book.id == book_id).update(data)
                 db.session.commit()
