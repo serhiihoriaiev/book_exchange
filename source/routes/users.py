@@ -2,6 +2,7 @@ import json
 
 from flask import request
 from flask_restful import Resource, marshal
+from sqlalchemy import and_
 
 from source.db import db, SiteUser, Address
 from source.structures import user_struct, address_struct
@@ -34,6 +35,9 @@ class UserRes(Resource):
             data = json.loads(request.data)
             if data.get('id'):
                 return {'ErrorMessage': 'You can''t change ID'}, 403
+            if data.get('address_id'):
+                if not db.session.query(Address).get(data.get('address_id')):
+                    return {'ErrorMessage': 'No such address'}, 404
             if db.session.query(SiteUser).get(user_id):
                 db.session.query(SiteUser).filter(SiteUser.id == user_id).update(data)
                 db.session.commit()
@@ -47,7 +51,7 @@ class UserRes(Resource):
             if user:
                 db.session.delete(user)
                 db.session.commit()
-                return marshal(db.session.query(SiteUser).all(), user_struct), 200
+                return marshal(db.session.query(SiteUser).order_by(SiteUser.id).all(), user_struct), 200
             return {'ErrorMessage': 'No such user'}, 404
         return {'ErrorMessage': 'User not specified'}, 400
 
@@ -62,6 +66,9 @@ class AddrRes(Resource):
         data = json.loads(request.data)
         if (data.get('street_addr') and data.get('city') and data.get('region')
                 and data.get('zip') and data.get('country')):
+            if db.session.query(Address).filter(and_(Address.street_addr == data.get('street_addr'),
+                                                     Address.city == data.get('city'))).first():
+                return {'ErrorMessage': 'This address already exists'}, 403
             try:
                 new = Address(**data)
             except TypeError:
@@ -89,6 +96,6 @@ class AddrRes(Resource):
             if data:
                 db.session.delete(data)
                 db.session.commit()
-                return marshal(db.session.query(Address).all(), address_struct), 200
+                return marshal(db.session.query(Address).order_by(Address.id).all(), address_struct), 200
             return {'ErrorMessage': 'No such address'}, 404
         return {'ErrorMessage': 'Address not specified'}, 400

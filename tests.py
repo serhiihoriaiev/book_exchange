@@ -117,22 +117,30 @@ class TestUser(TestCase):
     def test_13_get_address_by_id(self):
         resp = app.test_client().get('/addr/1')
         expected = {'id': 1, 'street_addr': 'Krylova str, 96', 'city': 'Los Angeles',
-                     'region': 'CA', 'zip': '12345-6789', 'country': 'USA'}
+                    'region': 'CA', 'zip': '12345-6789', 'country': 'USA'}
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
     def test_14_post_new_address(self):
         data = json.dumps({'street_addr': 'Bandera pr., 22, app.4', 'city': 'Kyiv',
-                     'region': 'Kyivska oblast', 'zip': '40321', 'country': 'Ukraine'})
+                           'region': 'Kyivska oblast', 'zip': '40321', 'country': 'Ukraine'})
+        app.test_client().post('/addr', data=data, content_type='application/json')
+
+        data = json.dumps({'street_addr': 'Lomonosov str, 28', 'city': 'Kharkiv',
+                           'region': 'Kharkivska oblast', 'zip': '61020', 'country': 'Ukraine'})
         resp = app.test_client().post('/addr', data=data, content_type='application/json')
+
         expected = [
-                    {'id': 1, 'street_addr': 'Krylova str, 96', 'city': 'Los Angeles',
-                     'region': 'CA', 'zip': '12345-6789', 'country': 'USA'},
-                    {'id': 2, 'street_addr': 'Bandera pr., 22, app.4', 'city': 'Kyiv',
-                     'region': 'Kyivska oblast', 'zip': '40321', 'country': 'Ukraine'}
-                    ]
+            {'id': 1, 'street_addr': 'Krylova str, 96', 'city': 'Los Angeles',
+             'region': 'CA', 'zip': '12345-6789', 'country': 'USA'},
+            {'id': 2, 'street_addr': 'Bandera pr., 22, app.4', 'city': 'Kyiv',
+             'region': 'Kyivska oblast', 'zip': '40321', 'country': 'Ukraine'},
+            {'id': 3, 'street_addr': 'Lomonosov str, 28', 'city': 'Kharkiv',
+             'region': 'Kharkivska oblast', 'zip': '61020', 'country': 'Ukraine'}
+        ]
         self.assertEqual(201, resp.status_code)
         self.assertEqual(expected, resp.json)
+
 
     def test_15_post_not_enough_data(self):
         data = json.dumps({'street_addr': 'Stalevarov str, 20'})
@@ -163,7 +171,9 @@ class TestUser(TestCase):
     def test_19_delete_address(self):
         resp = app.test_client().delete('/addr/2')
         expected = [{'id': 1, 'street_addr': 'Stalevarov str, 20', 'city': 'Los Angeles',
-                    'region': 'CA', 'zip': '12345-6789', 'country': 'USA'}]
+                     'region': 'CA', 'zip': '12345-6789', 'country': 'USA'},
+                    {'id': 3, 'street_addr': 'Lomonosov str, 28', 'city': 'Kharkiv',
+                     'region': 'Kharkivska oblast', 'zip': '61020', 'country': 'Ukraine'}]
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -176,6 +186,61 @@ class TestUser(TestCase):
         resp = app.test_client().delete('/addr')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Address not specified', resp.json['ErrorMessage'])
+
+    def test_22_post_existing_address(self):
+        data = json.dumps({'street_addr': 'Stalevarov str, 20', 'city': 'Los Angeles',
+                           'region': 'CA', 'zip': '12345-6789', 'country': 'USA'})
+        resp = app.test_client().post('/addr', data=data, content_type='application/json')
+        self.assertEqual(403, resp.status_code)
+        self.assertEqual('This address already exists', resp.json['ErrorMessage'])
+
+    def test_23_add_address_to_user(self):
+        data = json.dumps({'address_id': 1})
+        resp = app.test_client().patch('/users/1', data=data, content_type='application/json')
+        expected = {
+                    "id": 1, "username": "vasyl", "group": "user",
+                    "address": {
+                        'id': 1, 'street_addr': 'Stalevarov str, 20', 'city': 'Los Angeles',
+                        'region': 'CA', 'zip': '12345-6789', 'country': 'USA'
+                    }, "library": [], "wishlist": []
+                    }
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_24_change_user_address(self):
+        data = json.dumps({'address_id': 3})
+        resp = app.test_client().patch('/users/1', data=data, content_type='application/json')
+        expected = {
+            "id": 1, "username": "vasyl", "group": "user",
+            "address": {
+                'id': 3, 'street_addr': 'Lomonosov str, 28', 'city': 'Kharkiv',
+                'region': 'Kharkivska oblast', 'zip': '61020', 'country': 'Ukraine'
+            }, "library": [], "wishlist": []
+        }
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_25_add_wrong_address_to_user(self):
+        data = json.dumps({'address_id': 5})
+        resp = app.test_client().patch('/users/1', data=data, content_type='application/json')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such address', resp.json['ErrorMessage'])
+
+    def test_26_add_address_to_wrong_user(self):
+        data = json.dumps({'address_id': 1})
+        resp = app.test_client().patch('/users/24', data=data, content_type='application/json')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such user', resp.json['ErrorMessage'])
+
+    def test_27_delete_address_from_user(self):
+        data = json.dumps({'address_id': None})
+        resp = app.test_client().patch('/users/1', data=data, content_type='application/json')
+        expected = {
+            "id": 1, "username": "vasyl", "group": "user",
+            "address": {}, "library": [], "wishlist": []
+        }
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
 
 
 class TestBook(TestCase):
@@ -198,9 +263,9 @@ class TestBook(TestCase):
 
     def test_02_get_books(self):
         example_book = Book(isbn='978-1593279288',
-                                name='Python Crash Course, 2nd Edition: A Hands-On'
-                                     ', Project-Based Introduction to Programming',
-                                author='Eric Matthes')
+                            name='Python Crash Course, 2nd Edition: A Hands-On'
+                                 ', Project-Based Introduction to Programming',
+                            author='Eric Matthes')
         db.session.add(example_book)
         db.session.commit()
 
@@ -229,16 +294,16 @@ class TestBook(TestCase):
         data = json.dumps({'name': 'The outsider', 'author': 'Stephen King'})
         resp = app.test_client().post('/books', data=data, content_type='application/json')
         expected = [
-                    {
-                        "id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
-                                         "Project-Based Introduction to Programming",
-                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None, "publisher": None,
-                        "isbn": "978-1593279288"},
-                    {
-                        "id": 2, "name": "The outsider", "author": "Stephen King", "translator": None, "genre": None,
-                        "year": None, "publisher": None, "isbn": None
-                    }
-                    ]
+            {
+                "id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                 "Project-Based Introduction to Programming",
+                "author": "Eric Matthes", "translator": None, "genre": None, "year": None, "publisher": None,
+                "isbn": "978-1593279288"},
+            {
+                "id": 2, "name": "The outsider", "author": "Stephen King", "translator": None, "genre": None,
+                "year": None, "publisher": None, "isbn": None
+            }
+        ]
         self.assertEqual(201, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -258,11 +323,11 @@ class TestBook(TestCase):
         data = json.dumps({'genre': 'programming', 'year': 2019})
         resp = app.test_client().patch('/books/1', data=data, content_type='application/json')
         expected = {
-                    "id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
-                                     "Project-Based Introduction to Programming",
-                    "author": "Eric Matthes", "translator": None, "genre": "programming", "year": 2019,
-                    "publisher": None, "isbn": "978-1593279288"
-                   }
+            "id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                             "Project-Based Introduction to Programming",
+            "author": "Eric Matthes", "translator": None, "genre": "programming", "year": 2019,
+            "publisher": None, "isbn": "978-1593279288"
+        }
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -280,9 +345,9 @@ class TestBook(TestCase):
     def test_09_delete_book(self):
         resp = app.test_client().delete('/books/1')
         expected = [{
-                        "id": 2, "name": "The outsider", "author": "Stephen King", "translator": None, "genre": None,
-                        "year": None, "publisher": None, "isbn": None
-                    }]
+            "id": 2, "name": "The outsider", "author": "Stephen King", "translator": None, "genre": None,
+            "year": None, "publisher": None, "isbn": None
+        }]
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -295,6 +360,7 @@ class TestBook(TestCase):
         resp = app.test_client().delete('/books')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Book not specified', resp.json['ErrorMessage'])
+
 
 if __name__ == '__main__':
     unittest.main()

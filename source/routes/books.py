@@ -43,6 +43,6 @@ class BookRes(Resource):
             if book:
                 db.session.delete(book)
                 db.session.commit()
-                return marshal(db.session.query(Book).all(), book_struct), 200
+                return marshal(db.session.query(Book).order_by(Book.id).all(), book_struct), 200
             return {'ErrorMessage': 'No such book'}, 404
         return {'ErrorMessage': 'Book not specified'}, 400
