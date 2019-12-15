@@ -20,6 +20,10 @@ class WishRes(Resource):
         if db.session.query(SiteUser).get(user_id):
             data = json.loads(request.data)
             if data.get('book_id'):
+                # check if book_id is the only posted info
+                if len(data.keys()) > 1:
+                    return {'ErrorMessage': 'Excessive arguments posted'}, 400
+
                 user = db.session.query(SiteUser).get(user_id)
                 book = db.session.query(Book).get(data.get('book_id'))
                 if book:

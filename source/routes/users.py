@@ -20,13 +20,18 @@ class UserRes(Resource):
     def post(self):
         data = json.loads(request.data)
         if data.get('username') and data.get('group'):
+            # check if username already exists
             if db.session.query(SiteUser).filter(SiteUser.username == data.get('username')).first():
                 return {'ErrorMessage': 'This username already exists'}, 409
+
+            # check if all of the posted info has it's column in DB
             try:
                 new = SiteUser(**data)
             except TypeError:
                 return {'ErrorMessage': 'Excessive arguments posted'}, 400
             db.session.add(new)
+
+            # create library for this user
             new_lib = Library(user_id=db.session.query(SiteUser).filter(SiteUser.username == data.get('username'))
                               .first().id)
             db.session.add(new_lib)
@@ -39,10 +44,13 @@ class UserRes(Resource):
             data = json.loads(request.data)
             if data.get('id'):
                 return {'ErrorMessage': "You can't change ID"}, 403
+
             if data.get('address_id'):
                 if not db.session.query(Address).get(data.get('address_id')):
                     return {'ErrorMessage': 'No such address'}, 404
+
             if db.session.query(SiteUser).get(user_id):
+                # check if all of the posted info has it's column in DB
                 try:
                     db.session.query(SiteUser).filter(SiteUser.id == user_id).update(data)
                 except sqlalchemy.exc.InvalidRequestError:
@@ -71,11 +79,16 @@ class AddrRes(Resource):
 
     def post(self):
         data = json.loads(request.data)
+        # check if all necessary info posted
         if (data.get('street_addr') and data.get('city') and data.get('region')
                 and data.get('zip') and data.get('country')):
+
+            # check if this address is in DB already, unique address its city + street_addr
             if db.session.query(Address).filter(and_(Address.street_addr == data.get('street_addr'),
                                                      Address.city == data.get('city'))).first():
                 return {'ErrorMessage': 'This address already exists'}, 403
+
+            # check if all of the posted info has it's column in DB
             try:
                 new = Address(**data)
             except TypeError:
@@ -91,7 +104,11 @@ class AddrRes(Resource):
             if data.get('id'):
                 return {'ErrorMessage': "You can't change ID"}, 403
             if db.session.query(Address).get(addr_id):
-                db.session.query(Address).filter(Address.id == addr_id).update(data)
+                # check if all of the posted info has it's column in DB
+                try:
+                    db.session.query(Address).filter(Address.id == addr_id).update(data)
+                except sqlalchemy.exc.InvalidRequestError:
+                    return {'ErrorMessage': 'Excessive arguments posted'}, 400
                 db.session.commit()
                 return marshal(db.session.query(Address).get(addr_id), address_struct), 200
             return {'ErrorMessage': 'No such address'}, 404

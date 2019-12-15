@@ -20,8 +20,10 @@ class LibraRes(Resource):
         if db.session.query(SiteUser).get(user_id):
             data = json.loads(request.data)
             if data.get('book_id'):
+                # check if book_id is the only posted info
                 if len(data.keys()) > 1:
                     return {'ErrorMessage': 'Excessive arguments posted'}, 400
+
                 lib = db.session.query(Library).filter(Library.user_id == user_id).first()
                 book = db.session.query(Book).get(data.get('book_id'))
                 if book:
@@ -46,10 +48,15 @@ class LibraRes(Resource):
     def patch(self, user_id, book_id=None):
         if db.session.query(SiteUser).get(user_id):
             data = json.loads(request.data)
+
+            # if book_id is in URL, then it's the user's book info patching
             if book_id:
                 lid = db.session.query(Library).filter(Library.user_id == user_id).first().id
+                # check if book is in library
                 if not db.session.query(LibBooks).filter(and_(LibBooks.lib_id == lid, LibBooks.book_id == book_id)).first():
                     return {'ErrorMessage': 'No such book in library'}, 404
+
+                # check if all of the posted info has it's column in DB
                 try:
                     db.session.query(LibBooks).filter(and_(LibBooks.lib_id == lid, LibBooks.book_id == book_id)).update(
                         data)
@@ -60,6 +67,8 @@ class LibraRes(Resource):
                     db.session.query(LibBooks).filter(and_(LibBooks.lib_id == lid, LibBooks.book_id == book_id)).first(),
                     libbook_struct
                 ), 200
+
+            # check if it's query to hide the user's library
             if data.get('hidden_lib'):
                 if data.get('id'):
                     return {'ErrorMessage': 'You can''t change ID'}, 403
