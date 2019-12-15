@@ -5,7 +5,7 @@ from flask import request
 from flask_restful import Resource, marshal
 from sqlalchemy import and_
 
-from source.db import db, SiteUser, Address, Library
+from source.db import db, SiteUser, Address, Library, LibBooks
 from source.structures import user_struct, address_struct
 
 
@@ -64,8 +64,16 @@ class UserRes(Resource):
         if user_id:
             user = db.session.query(SiteUser).get(user_id)
             if user:
+                # also we need to delete  this user's library and wishlist
+                lib = db.session.query(Library).filter(Library.user_id == user_id).first()
+                lib_books = db.session.query(LibBooks).filter(LibBooks.lib_id == lib.id).all()
+
                 db.session.delete(user)
+                db.session.delete(lib)
+                for lb in lib_books:
+                    db.session.delete(lb)
                 db.session.commit()
+
                 return marshal(db.session.query(SiteUser).order_by(SiteUser.id).all(), user_struct), 200
             return {'ErrorMessage': 'No such user'}, 404
         return {'ErrorMessage': 'User not specified'}, 400
