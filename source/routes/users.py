@@ -64,7 +64,7 @@ class UserRes(Resource):
         if user_id:
             user = db.session.query(SiteUser).get(user_id)
             if user:
-                # also we need to delete  this user's library and wishlist
+                # also we need to delete this user's library
                 lib = db.session.query(Library).filter(Library.user_id == user_id).first()
                 lib_books = db.session.query(LibBooks).filter(LibBooks.lib_id == lib.id).all()
 
