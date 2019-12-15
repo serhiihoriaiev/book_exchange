@@ -2,8 +2,9 @@ import json
 
 from flask import request
 from flask_restful import Resource, marshal
+from sqlalchemy import and_
 
-from source.db import db, Book
+from source.db import db, Book, Library, LibBooks
 from source.db import SiteUser
 from source.structures import book_struct
 
@@ -22,8 +23,16 @@ class WishRes(Resource):
                 user = db.session.query(SiteUser).get(user_id)
                 book = db.session.query(Book).get(data.get('book_id'))
                 if book:
+                    # check if this book is in user's library already
+                    lib = db.session.query(Library).filter(Library.user_id == user_id).first()
+                    if db.session.query(LibBooks).filter(
+                            and_(LibBooks.lib_id == lib.id, LibBooks.book_id == book.id)).first():
+                        return {'ErrorMessage': "This book is already in user's library"}, 403
+
+                    # check if this book is in user's wishlist already
                     if book in user.wishlist:
                         return {'ErrorMessage': 'This book is already in wishlist'}, 403
+
                     user.wishlist.append(book)
                     db.session.commit()
                     return marshal(user.wishlist, book_struct), 201

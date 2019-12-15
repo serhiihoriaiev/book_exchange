@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest import TestCase
 
-from source.db import db, SiteUser, Book, Address
+from source.db import db, SiteUser, Book, Address, Library, LibBooks
 from main import create_app
 
 app = create_app('TEST')
@@ -141,7 +141,6 @@ class TestUser(TestCase):
         self.assertEqual(201, resp.status_code)
         self.assertEqual(expected, resp.json)
 
-
     def test_15_post_not_enough_data(self):
         data = json.dumps({'street_addr': 'Stalevarov str, 20'})
         resp = app.test_client().post('/addr', data=data, content_type='application/json')
@@ -160,7 +159,7 @@ class TestUser(TestCase):
         data = json.dumps({'id': 4, 'street_addr': 'Stalevarov str, 20'})
         resp = app.test_client().patch('/addr/1', data=data, content_type='application/json')
         self.assertEqual(403, resp.status_code)
-        self.assertEqual('You can''t change ID', resp.json['ErrorMessage'])
+        self.assertEqual("You can't change ID", resp.json['ErrorMessage'])
 
     def test_18_patch_address_not_exist(self):
         data = json.dumps({'street_addr': 'Stalevarov str, 20'})
@@ -198,12 +197,12 @@ class TestUser(TestCase):
         data = json.dumps({'address_id': 1})
         resp = app.test_client().patch('/users/1', data=data, content_type='application/json')
         expected = {
-                    "id": 1, "username": "vasyl", "group": "user",
-                    "address": {
-                        'id': 1, 'street_addr': 'Stalevarov str, 20', 'city': 'Los Angeles',
-                        'region': 'CA', 'zip': '12345-6789', 'country': 'USA'
-                    }
-                    }
+            "id": 1, "username": "vasyl", "group": "user",
+            "address": {
+                'id': 1, 'street_addr': 'Stalevarov str, 20', 'city': 'Los Angeles',
+                'region': 'CA', 'zip': '12345-6789', 'country': 'USA'
+            }
+        }
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -395,10 +394,10 @@ class LibraryTesting(TestCase):
         data = json.dumps({'book_id': 1})
         resp = app.test_client().post('/users/1/library', data=data, content_type='application/json')
         expected = {'books': [{"book": {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
-                                        "Project-Based Introduction to Programming",
+                                                         "Project-Based Introduction to Programming",
                                         "author": "Eric Matthes", "translator": None, "genre": None, "year": None,
                                         "publisher": None, "isbn": "978-1593279288"},
-                              "hidden": False, "status": "Available for exchange"}],
+                               "hidden": False, "status": "Available for exchange"}],
                     'hidden_lib': False, 'id': 1}
         self.assertEqual(201, resp.status_code)
         self.assertEqual(expected, resp.json)
@@ -488,12 +487,12 @@ class LibraryTesting(TestCase):
         self.assertEqual(expected, resp.json)
 
     def test_09_patch_book_in_lib(self):
-        data = json.dumps({'book_id': 2, 'hidden': True, 'status': 'Not available for exchange'})
-        resp = app.test_client().patch('/users/1/library', data=data, content_type='application/json')
+        data = json.dumps({'hidden': True, 'status': 'Not available for exchange'})
+        resp = app.test_client().patch('/users/1/library/2', data=data, content_type='application/json')
         expected = {"book": {"id": 2, "name": "Clean Code: A Handbook of Agile Software Craftsmanship",
-                                        "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
-                                        "publisher": None, "isbn": "978-0132350884"},
-                               "hidden": True, "status": "Not available for exchange"}
+                             "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
+                             "publisher": None, "isbn": "978-0132350884"},
+                    "hidden": True, "status": "Not available for exchange"}
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -518,14 +517,14 @@ class LibraryTesting(TestCase):
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Excessive arguments posted', resp.json['ErrorMessage'])
 
-        data = json.dumps({'book_id': 2, 'hidden': True, 'status': 'Not available for exchange', 'info': 'great book'})
-        resp = app.test_client().patch('/users/1/library', data=data, content_type='application/json')
+        data = json.dumps({'hidden': True, 'status': 'Not available for exchange', 'info': 'great book'})
+        resp = app.test_client().patch('/users/1/library/2', data=data, content_type='application/json')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Excessive arguments posted', resp.json['ErrorMessage'])
 
     def test_11_patch_book_not_existent_in_lib(self):
-        data = json.dumps({'book_id': 8, 'hidden': True, 'status': 'Not available for exchange'})
-        resp = app.test_client().patch('/users/1/library', data=data, content_type='application/json')
+        data = json.dumps({'hidden': True, 'status': 'Not available for exchange'})
+        resp = app.test_client().patch('/users/1/library/8', data=data, content_type='application/json')
         self.assertEqual(404, resp.status_code)
         self.assertEqual('No such book in library', resp.json['ErrorMessage'])
 
@@ -551,6 +550,44 @@ class LibraryTesting(TestCase):
         resp = app.test_client().post('/users/1/library', data=data, content_type='application/json')
         self.assertEqual(403, resp.status_code)
         self.assertEqual('This book is already in library', resp.json['ErrorMessage'])
+
+    def test_15_add_book_from_wishlist(self):
+        example_book = Book(name='Book from wishlist', author='John Doe')
+        db.session.add(example_book)
+        db.session.commit()
+
+        test_user = db.session.query(SiteUser).get(1)
+        test_user.wishlist.append(example_book)
+
+        # check if book in user's wishlist
+        resp = app.test_client().get('/users/1/wishlist')
+        expected = [{"id": 4, "name": "Book from wishlist",
+                     "author": "John Doe", "translator": None, "genre": None, "year": None,
+                     "publisher": None, "isbn": None}]
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+        # add it to library
+        data = json.dumps({'book_id': 4})
+        resp = app.test_client().post('/users/1/library', data=data, content_type='application/json')
+        expected = {'books': [{"book": {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                                         "Project-Based Introduction to Programming",
+                                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-1593279288"},
+                               "hidden": False, "status": "Available for exchange"},
+                              {"book": {"id": 4, "name": "Book from wishlist",
+                                        "author": "John Doe", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": None},
+                               "hidden": False, "status": "Available for exchange"}
+                              ],
+                    'hidden_lib': True, 'id': 1}
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+        # check if book is removed from wishlist
+        resp = app.test_client().get('/users/1/wishlist')
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual([], resp.json)
 
 
 class TestWishlist(TestCase):
@@ -630,7 +667,22 @@ class TestWishlist(TestCase):
         self.assertEqual(404, resp.status_code)
         self.assertEqual('No such user', resp.json['ErrorMessage'])
 
-    def test_06_delete_book_from_wishlist(self):
+    def test_06_add_book_that_user_has_in_library(self):
+        example_book = Book(name='Become super chief',
+                            author='Ramsay Gordon')
+        db.session.add(example_book)
+        test_lib = db.session.query(Library).filter(Library.user_id == 1).first()
+        lb = LibBooks()
+        lb.book = example_book
+        test_lib.books.append(lb)
+        db.session.commit()
+
+        data = json.dumps({'book_id': 3})
+        resp = app.test_client().post('/users/1/wishlist', data=data, content_type='application/json')
+        self.assertEqual(403, resp.status_code)
+        self.assertEqual("This book is already in user's library", resp.json['ErrorMessage'])
+
+    def test_07_delete_book_from_wishlist(self):
         resp = app.test_client().delete('/users/1/wishlist/1')
         expected = [{"id": 2, "name": "Clean Code: A Handbook of Agile Software Craftsmanship",
                      "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
@@ -638,15 +690,16 @@ class TestWishlist(TestCase):
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
-    def test_07_delete_not_existent_book_from_wishlist(self):
+    def test_08_delete_not_existent_book_from_wishlist(self):
         resp = app.test_client().delete('/users/1/wishlist/1')
         self.assertEqual(404, resp.status_code)
         self.assertEqual('No such book in wishlist', resp.json['ErrorMessage'])
 
-    def test_08_delete_book_not_specified(self):
+    def test_09_delete_book_not_specified(self):
         resp = app.test_client().delete('/users/1/wishlist')
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Book not specified', resp.json['ErrorMessage'])
+
 
 if __name__ == '__main__':
     unittest.main()

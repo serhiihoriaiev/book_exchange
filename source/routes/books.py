@@ -31,7 +31,7 @@ class BookRes(Resource):
         if book_id:
             data = json.loads(request.data)
             if data.get('id'):
-                return {'ErrorMessage': 'You can''t change ID'}, 403
+                return {'ErrorMessage': "You can't change ID"}, 403
             if db.session.query(Book).get(book_id):
                 try:
                     db.session.query(Book).filter(Book.id == book_id).update(data)

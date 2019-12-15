@@ -38,7 +38,7 @@ class UserRes(Resource):
         if user_id:
             data = json.loads(request.data)
             if data.get('id'):
-                return {'ErrorMessage': 'You can''t change ID'}, 403
+                return {'ErrorMessage': "You can't change ID"}, 403
             if data.get('address_id'):
                 if not db.session.query(Address).get(data.get('address_id')):
                     return {'ErrorMessage': 'No such address'}, 404
@@ -89,7 +89,7 @@ class AddrRes(Resource):
         if addr_id:
             data = json.loads(request.data)
             if data.get('id'):
-                return {'ErrorMessage': 'You can''t change ID'}, 403
+                return {'ErrorMessage': "You can't change ID"}, 403
             if db.session.query(Address).get(addr_id):
                 db.session.query(Address).filter(Address.id == addr_id).update(data)
                 db.session.commit()
