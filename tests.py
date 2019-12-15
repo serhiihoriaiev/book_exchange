@@ -630,6 +630,23 @@ class TestWishlist(TestCase):
         self.assertEqual(404, resp.status_code)
         self.assertEqual('No such user', resp.json['ErrorMessage'])
 
+    def test_06_delete_book_from_wishlist(self):
+        resp = app.test_client().delete('/users/1/wishlist/1')
+        expected = [{"id": 2, "name": "Clean Code: A Handbook of Agile Software Craftsmanship",
+                     "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
+                     "publisher": None, "isbn": "978-0132350884"}]
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_07_delete_not_existent_book_from_wishlist(self):
+        resp = app.test_client().delete('/users/1/wishlist/1')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such book in wishlist', resp.json['ErrorMessage'])
+
+    def test_08_delete_book_not_specified(self):
+        resp = app.test_client().delete('/users/1/wishlist')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Book not specified', resp.json['ErrorMessage'])
 
 if __name__ == '__main__':
     unittest.main()

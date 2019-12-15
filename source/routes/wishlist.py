@@ -30,3 +30,16 @@ class WishRes(Resource):
                 return {'ErrorMessage': 'No such book'}, 404
             return {'ErrorMessage': 'Book not specified'}, 400
         return {'ErrorMessage': 'No such user'}, 404
+
+    def delete(self, user_id, book_id=None):
+        if db.session.query(SiteUser).get(user_id):
+            if book_id:
+                user = db.session.query(SiteUser).get(user_id)
+                book = db.session.query(Book).get(book_id)
+                if book in user.wishlist:
+                    user.wishlist.remove(book)
+                    db.session.commit()
+                    return marshal(user.wishlist, book_struct), 200
+                return {'ErrorMessage': 'No such book in wishlist'}, 404
+            return {'ErrorMessage': 'Book not specified'}, 400
+        return {'ErrorMessage': 'No such user'}, 404
