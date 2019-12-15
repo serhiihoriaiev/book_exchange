@@ -32,12 +32,12 @@ class TestUser(TestCase):
         db.session.commit()
 
         resp = app.test_client().get('/users')
-        expected = [{"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []}]
+        expected = [{"id": 1, "username": "vasyl", "group": "user", "address": {}}]
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
         resp = app.test_client().get('/users/1')
-        expected = {"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []}
+        expected = {"id": 1, "username": "vasyl", "group": "user", "address": {}}
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -50,8 +50,8 @@ class TestUser(TestCase):
         data = json.dumps({'username': 'petro', 'group': 'admin'})
         resp = app.test_client().post('/users', data=data, content_type='application/json')
         expected = [
-            {"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []},
-            {"id": 2, "username": "petro", "group": "admin", "address": {}, "library": [], "wishlist": []}
+            {"id": 1, "username": "vasyl", "group": "user", "address": {}},
+            {"id": 2, "username": "petro", "group": "admin", "address": {}}
         ]
         self.assertEqual(201, resp.status_code)
         self.assertEqual(expected, resp.json)
@@ -71,7 +71,7 @@ class TestUser(TestCase):
     def test_07_user_patch(self):
         data = json.dumps({'username': 'killer99', 'group': 'user'})
         resp = app.test_client().patch('/users/2', data=data, content_type='application/json')
-        expected = {"id": 2, "username": "killer99", "group": "user", "address": {}, "library": [], "wishlist": []}
+        expected = {"id": 2, "username": "killer99", "group": "user", "address": {}}
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -88,7 +88,7 @@ class TestUser(TestCase):
 
     def test_09_user_delete(self):
         resp = app.test_client().delete('/users/2')
-        expected = [{"id": 1, "username": "vasyl", "group": "user", "address": {}, "library": [], "wishlist": []}]
+        expected = [{"id": 1, "username": "vasyl", "group": "user", "address": {}}]
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
 
@@ -202,7 +202,7 @@ class TestUser(TestCase):
                     "address": {
                         'id': 1, 'street_addr': 'Stalevarov str, 20', 'city': 'Los Angeles',
                         'region': 'CA', 'zip': '12345-6789', 'country': 'USA'
-                    }, "library": [], "wishlist": []
+                    }
                     }
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
@@ -215,7 +215,7 @@ class TestUser(TestCase):
             "address": {
                 'id': 3, 'street_addr': 'Lomonosov str, 28', 'city': 'Kharkiv',
                 'region': 'Kharkivska oblast', 'zip': '61020', 'country': 'Ukraine'
-            }, "library": [], "wishlist": []
+            }
         }
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
@@ -237,7 +237,7 @@ class TestUser(TestCase):
         resp = app.test_client().patch('/users/1', data=data, content_type='application/json')
         expected = {
             "id": 1, "username": "vasyl", "group": "user",
-            "address": {}, "library": [], "wishlist": []
+            "address": {}
         }
         self.assertEqual(200, resp.status_code)
         self.assertEqual(expected, resp.json)
@@ -361,6 +361,184 @@ class TestBook(TestCase):
         self.assertEqual(400, resp.status_code)
         self.assertEqual('Book not specified', resp.json['ErrorMessage'])
 
+
+class LibraryTesting(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app_context = app.app_context()
+        cls.app_context.push()
+        db.create_all()
+
+    @classmethod
+    def tearDownClass(cls):
+        db.session.remove()
+        db.drop_all()
+        cls.app_context.pop()
+
+    def test_01_get_empty_library(self):
+        data = json.dumps({'username': 'petro', 'group': 'admin'})
+        app.test_client().post('/users', data=data, content_type='application/json')
+
+        resp = app.test_client().get('/users/1/library')
+        expected = {'books': [], 'hidden_lib': False, 'id': 1}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_02_add_book_to_lib(self):
+        example_book = Book(isbn='978-1593279288',
+                            name='Python Crash Course, 2nd Edition: A Hands-On'
+                                 ', Project-Based Introduction to Programming',
+                            author='Eric Matthes')
+        db.session.add(example_book)
+        db.session.commit()
+
+        data = json.dumps({'book_id': 1})
+        resp = app.test_client().post('/users/1/library', data=data, content_type='application/json')
+        expected = {'books': [{"book": {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                        "Project-Based Introduction to Programming",
+                                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-1593279288"},
+                              "hidden": False, "status": "Available for exchange"}],
+                    'hidden_lib': False, 'id': 1}
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_03_add_more_books_to_lib(self):
+        example_book = Book(isbn='978-0132350884',
+                            name='Clean Code: A Handbook of Agile Software Craftsmanship',
+                            author='Robert C. Martin')
+        db.session.add(example_book)
+        db.session.commit()
+
+        data = json.dumps({'book_id': 2})
+        resp = app.test_client().post('/users/1/library', data=data, content_type='application/json')
+        expected = {'books': [{"book": {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                                         "Project-Based Introduction to Programming",
+                                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-1593279288"},
+                               "hidden": False, "status": "Available for exchange"},
+                              {"book": {"id": 2, "name": "Clean Code: A Handbook of Agile Software Craftsmanship",
+                                        "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-0132350884"},
+                               "hidden": False, "status": "Available for exchange"}
+                              ],
+                    'hidden_lib': False, 'id': 1}
+        self.assertEqual(201, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_04_get_non_empty_lib(self):
+        resp = app.test_client().get('/users/1/library')
+        expected = {'books': [{"book": {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                                         "Project-Based Introduction to Programming",
+                                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-1593279288"},
+                               "hidden": False, "status": "Available for exchange"},
+                              {"book": {"id": 2, "name": "Clean Code: A Handbook of Agile Software Craftsmanship",
+                                        "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-0132350884"},
+                               "hidden": False, "status": "Available for exchange"}
+                              ],
+                    'hidden_lib': False, 'id': 1}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_05_get_non_existent_users_lib(self):
+        resp = app.test_client().get('/users/2/library')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such user', resp.json['ErrorMessage'])
+
+    def test_06_post_non_existent_users_lib(self):
+        data = json.dumps({'book_id': 2})
+        resp = app.test_client().post('/users/2/library', data=data, content_type='application/json')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such user', resp.json['ErrorMessage'])
+
+    def test_07_post_excessive_info(self):
+        example_book = Book(isbn='978-0134240884',
+                            name='Not existing testing book',
+                            author='Jane Doe')
+        db.session.add(example_book)
+        db.session.commit()
+
+        data = json.dumps({'book_id': 3, 'hidden': True})
+        resp = app.test_client().post('/users/1/library', data=data, content_type='application/json')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Excessive arguments posted', resp.json['ErrorMessage'])
+
+    def test_08_hide_lib(self):
+        data = json.dumps({'hidden_lib': True})
+        resp = app.test_client().patch('/users/1/library', data=data, content_type='application/json')
+        expected = {'books': [{"book": {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                                         "Project-Based Introduction to Programming",
+                                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-1593279288"},
+                               "hidden": False, "status": "Available for exchange"},
+                              {"book": {"id": 2, "name": "Clean Code: A Handbook of Agile Software Craftsmanship",
+                                        "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-0132350884"},
+                               "hidden": False, "status": "Available for exchange"}
+                              ],
+                    'hidden_lib': True, 'id': 1}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+        # try again
+        resp = app.test_client().patch('/users/1/library', data=data, content_type='application/json')
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_09_patch_book_in_lib(self):
+        data = json.dumps({'book_id': 2, 'hidden': True, 'status': 'Not available for exchange'})
+        resp = app.test_client().patch('/users/1/library', data=data, content_type='application/json')
+        expected = {"book": {"id": 2, "name": "Clean Code: A Handbook of Agile Software Craftsmanship",
+                                        "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-0132350884"},
+                               "hidden": True, "status": "Not available for exchange"}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+        resp = app.test_client().get('/users/1/library')
+        expected = {'books': [{"book": {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                                         "Project-Based Introduction to Programming",
+                                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-1593279288"},
+                               "hidden": False, "status": "Available for exchange"},
+                              {"book": {"id": 2, "name": "Clean Code: A Handbook of Agile Software Craftsmanship",
+                                        "author": "Robert C. Martin", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-0132350884"},
+                               "hidden": True, "status": "Not available for exchange"}
+                              ],
+                    'hidden_lib': True, 'id': 1}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_10_patch_excessive_info(self):
+        data = json.dumps({'hidden_lib': True, 'status': 'cool'})
+        resp = app.test_client().patch('/users/1/library', data=data, content_type='application/json')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Excessive arguments posted', resp.json['ErrorMessage'])
+
+        data = json.dumps({'book_id': 2, 'hidden': True, 'status': 'Not available for exchange', 'info': 'great book'})
+        resp = app.test_client().patch('/users/1/library', data=data, content_type='application/json')
+        self.assertEqual(400, resp.status_code)
+        self.assertEqual('Excessive arguments posted', resp.json['ErrorMessage'])
+
+    def test_11_delete_book_from_lib(self):
+        resp = app.test_client().delete('/users/1/library/2')
+        expected = {'books': [{"book": {"id": 1, "name": "Python Crash Course, 2nd Edition: A Hands-On, "
+                                                         "Project-Based Introduction to Programming",
+                                        "author": "Eric Matthes", "translator": None, "genre": None, "year": None,
+                                        "publisher": None, "isbn": "978-1593279288"},
+                               "hidden": False, "status": "Available for exchange"}
+                              ],
+                    'hidden_lib': True, 'id': 1}
+        self.assertEqual(200, resp.status_code)
+        self.assertEqual(expected, resp.json)
+
+    def test_12_delete_not_existent_book(self):
+        resp = app.test_client().delete('/users/1/library/2')
+        self.assertEqual(404, resp.status_code)
+        self.assertEqual('No such book in user''s library', resp.json['ErrorMessage'])
 
 if __name__ == '__main__':
     unittest.main()

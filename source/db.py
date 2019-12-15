@@ -32,19 +32,18 @@ class Address(db.Model):
     users = db.relationship('SiteUser', backref='address')
 
 
-lib_books_table = db.Table(
-    'lib_books',
-    db.Column('lib_id', db.Integer, db.ForeignKey('library.id'), primary_key=True),
-    db.Column('book_id', db.Integer, db.ForeignKey('book.id'), primary_key=True),
-    db.Column('hidden', db.Boolean),
-    db.Column('status', db.String)  # available for exchange or not
-)
-
+# association class that is used instead of Table because of additional fields 'hidden' and 'status'
+class LibBooks(db.Model):
+    lib_id = db.Column(db.Integer, db.ForeignKey('library.id'), primary_key=True)
+    book_id = db.Column(db.Integer, db.ForeignKey('book.id'), primary_key=True)
+    hidden = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String, default='Available for exchange')  # available for exchange or not
+    book = db.relationship('Book')
 
 class Library(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('site_user.id'))
-    books = db.relationship('Book', secondary=lib_books_table, backref='libraries')
+    books = db.relationship('LibBooks')
     hidden_lib = db.Column(db.Boolean, default=False)
 
 

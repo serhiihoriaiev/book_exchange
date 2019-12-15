@@ -1,5 +1,6 @@
 import json
 
+import sqlalchemy
 from flask import request
 from flask_restful import Resource, marshal
 
@@ -32,7 +33,10 @@ class BookRes(Resource):
             if data.get('id'):
                 return {'ErrorMessage': 'You can''t change ID'}, 403
             if db.session.query(Book).get(book_id):
-                db.session.query(Book).filter(Book.id == book_id).update(data)
+                try:
+                    db.session.query(Book).filter(Book.id == book_id).update(data)
+                except sqlalchemy.exc.InvalidRequestError:
+                    return {'ErrorMessage': 'Excessive arguments posted'}, 400
                 db.session.commit()
                 return marshal(db.session.query(Book).get(book_id), book_struct), 200
         return {'ErrorMessage': 'Book not specified'}, 400

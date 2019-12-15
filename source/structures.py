@@ -11,12 +11,15 @@ book_struct = {
 
 }
 
+libbook_struct = {
+    "hidden": fields.Boolean, "status": fields.String, "book": fields.Nested(book_struct, default=[])
+
+}
 library_struct = {
-    "id": fields.Integer, "books": fields.Nested(book_struct)
+    "id": fields.Integer, "books": fields.Nested(libbook_struct, default=[]), "hidden_lib": fields.Boolean
 }
 
 user_struct = {
     "id": fields.Integer, "username": fields.String, "group": fields.String,
-    "address": fields.Nested(address_struct, default={}), "library": fields.Nested(library_struct, default=[]),
-    "wishlist": fields.Nested(book_struct, default=[])
+    "address": fields.Nested(address_struct, default={})
 }

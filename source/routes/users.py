@@ -1,10 +1,11 @@
 import json
 
+import sqlalchemy
 from flask import request
 from flask_restful import Resource, marshal
 from sqlalchemy import and_
 
-from source.db import db, SiteUser, Address
+from source.db import db, SiteUser, Address, Library
 from source.structures import user_struct, address_struct
 
 
@@ -26,6 +27,9 @@ class UserRes(Resource):
             except TypeError:
                 return {'ErrorMessage': 'Excessive arguments posted'}, 400
             db.session.add(new)
+            new_lib = Library(user_id=db.session.query(SiteUser).filter(SiteUser.username == data.get('username'))
+                              .first().id)
+            db.session.add(new_lib)
             db.session.commit()
             return marshal(db.session.query(SiteUser).all(), user_struct), 201
         return {'ErrorMessage': 'Not enough arguments'}, 400
@@ -39,7 +43,10 @@ class UserRes(Resource):
                 if not db.session.query(Address).get(data.get('address_id')):
                     return {'ErrorMessage': 'No such address'}, 404
             if db.session.query(SiteUser).get(user_id):
-                db.session.query(SiteUser).filter(SiteUser.id == user_id).update(data)
+                try:
+                    db.session.query(SiteUser).filter(SiteUser.id == user_id).update(data)
+                except sqlalchemy.exc.InvalidRequestError:
+                    return {'ErrorMessage': 'Excessive arguments posted'}, 400
                 db.session.commit()
                 return marshal(db.session.query(SiteUser).get(user_id), user_struct), 200
             return {'ErrorMessage': 'No such user'}, 404
