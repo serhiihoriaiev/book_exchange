@@ -24,6 +24,10 @@ class UserRes(Resource):
             if db.session.query(SiteUser).filter(SiteUser.username == data.get('username')).first():
                 return {'ErrorMessage': 'This username already exists'}, 409
 
+            # check if address entered exists
+            if data.get('address_id'):
+                return {'ErrorMessage': 'Use PATCH to add the existing address'}, 403
+
             # check if all of the posted info has it's column in DB
             try:
                 new = SiteUser(**data)
